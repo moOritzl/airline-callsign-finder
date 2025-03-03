@@ -1,7 +1,7 @@
 {
   "name": "Airline Callsign Finder",
   "short_name": "Callsign Finder",
-  "start_url": "/index.html",
+  "start_url": "/airline-callsign-finder",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
