@@ -1,14 +1,20 @@
+require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const morgan = require('morgan');
 const { router: authRouter, authenticateToken, requireRole } = require('./auth');
 
 const app = express();
+const logger = process.env.NODE_ENV === 'production'
+  ? morgan('combined', { stream: process.stdout })
+  : morgan('dev');
+app.use(logger);
 app.use(express.json());
 app.use(express.static(__dirname));
 app.use('/api', authRouter);
 
-const DATA_FILE = path.join(__dirname, 'airlines.json');
+const DATA_FILE = process.env.DATA_PATH || path.join(__dirname, 'airlines.json');
 
 function readData() {
   return JSON.parse(fs.readFileSync(DATA_FILE));
