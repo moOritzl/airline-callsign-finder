@@ -31,16 +31,21 @@ describe('Airline API', () => {
     expect(res404.status).toBe(404);
   });
 
-  test('POST, PUT, DELETE require x-role: author and persist data changes', async () => {
+  test('POST, PUT, DELETE require auth token and persist data changes', async () => {
     const code = 'TST';
     const callsign = 'TestAir';
 
     let res = await request(app).post('/api/airlines').send({ icao: code, callsign });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
+
+    const loginRes = await request(app)
+      .post('/api/login')
+      .send({ username: 'author', password: 'secret' });
+    const token = loginRes.body.token;
 
     res = await request(app)
       .post('/api/airlines')
-      .set('x-role', 'author')
+      .set('Authorization', `Bearer ${token}`)
       .send({ icao: code, callsign });
     expect(res.status).toBe(201);
 
@@ -49,11 +54,11 @@ describe('Airline API', () => {
     expect(res.body.callsign).toBe(callsign);
 
     res = await request(app).put(`/api/airlines/${code}`).send({ callsign: 'Updated' });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
 
     res = await request(app)
       .put(`/api/airlines/${code}`)
-      .set('x-role', 'author')
+      .set('Authorization', `Bearer ${token}`)
       .send({ callsign: 'Updated' });
     expect(res.status).toBe(200);
 
@@ -61,9 +66,11 @@ describe('Airline API', () => {
     expect(res.body.callsign).toBe('Updated');
 
     res = await request(app).delete(`/api/airlines/${code}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
 
-    res = await request(app).delete(`/api/airlines/${code}`).set('x-role', 'author');
+    res = await request(app)
+      .delete(`/api/airlines/${code}`)
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(204);
 
     res = await request(app).get(`/api/airlines/${code}`);

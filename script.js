@@ -1,5 +1,14 @@
 let airlines = {};
-let currentUser = JSON.parse(localStorage.getItem('user')) || null;
+let token = localStorage.getItem('token');
+let currentUser = token ? parseJwt(token) : null;
+
+function parseJwt(t) {
+    try {
+        return JSON.parse(atob(t.split('.')[1]));
+    } catch {
+        return null;
+    }
+}
 
 function loadAirlines() {
     return fetch('/api/airlines')
@@ -11,10 +20,6 @@ function loadAirlines() {
 }
 
 loadAirlines();
-
-const users = {
-    author: { password: 'secret', role: 'author' }
-};
 
 const loginForm = document.getElementById('login-form');
 const logoutSection = document.getElementById('logout-section');
@@ -84,20 +89,28 @@ updateUI();
 document.getElementById('login-btn').addEventListener('click', () => {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    const user = users[username];
-    if (user && user.password === password) {
-        currentUser = { username, role: user.role };
-        localStorage.setItem('user', JSON.stringify(currentUser));
+    fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    }).then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+    }).then(data => {
+        token = data.token;
+        localStorage.setItem('token', token);
+        currentUser = parseJwt(token);
         updateUI();
         if (currentUser.role === 'author') loadAirlines();
-    } else {
+    }).catch(() => {
         alert('Login fehlgeschlagen');
-    }
+    });
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => {
     currentUser = null;
-    localStorage.removeItem('user');
+    token = null;
+    localStorage.removeItem('token');
     updateUI();
 });
 
@@ -129,7 +142,7 @@ function deleteAirline(icao) {
     if (!(currentUser?.role === 'author')) return;
     fetch(`/api/airlines/${icao}`, {
         method: 'DELETE',
-        headers: { 'X-Role': currentUser.role }
+        headers: { 'Authorization': `Bearer ${token}` }
     }).then(res => {
         if (res.ok) {
             showMessage('Airline gelöscht');
@@ -142,7 +155,7 @@ function deleteAirline(icao) {
         queueOperation({
             method: 'DELETE',
             url: `/api/airlines/${icao}`,
-            headers: { 'X-Role': currentUser.role }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
     });
 }
@@ -164,7 +177,7 @@ addForm.addEventListener('submit', e => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Role': currentUser.role
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ icao, callsign })
         }).then(res => {
@@ -182,7 +195,7 @@ addForm.addEventListener('submit', e => {
                 url: '/api/airlines',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Role': currentUser.role
+                    'Authorization': `Bearer ${token}`
                 },
                 body: { icao, callsign }
             });
@@ -197,7 +210,7 @@ editForm.addEventListener('submit', e => {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
-            'X-Role': currentUser.role
+            'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ callsign: editCallsignInput.value })
     }).then(res => {
@@ -216,7 +229,7 @@ editForm.addEventListener('submit', e => {
             url: `/api/airlines/${editTarget}`,
             headers: {
                 'Content-Type': 'application/json',
-                'X-Role': currentUser.role
+                'Authorization': `Bearer ${token}`
             },
             body: { callsign: editCallsignInput.value }
         });
