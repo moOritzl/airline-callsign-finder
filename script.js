@@ -30,6 +30,28 @@ const cancelEditBtn = document.getElementById('cancel-edit');
 const messageBox = document.getElementById('message');
 let editTarget = null;
 
+function invalidateAirlineCache() {
+    if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'invalidate-airlines-cache' });
+    }
+}
+
+function queueOperation(operation) {
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        navigator.serviceWorker.ready
+            .then(reg => {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'queue', operation });
+                }
+                return reg.sync.register('sync-airlines');
+            })
+            .then(() => showMessage('Offline gespeichert, wird später synchronisiert'))
+            .catch(() => showMessage('Fehler beim Offline-Speichern', true));
+    } else {
+        showMessage('Offline-Sync nicht unterstützt', true);
+    }
+}
+
 function showMessage(text, isError = false) {
     messageBox.textContent = text;
     messageBox.className = isError ? 'error' : 'success';
@@ -109,10 +131,20 @@ function deleteAirline(icao) {
         method: 'DELETE',
         headers: { 'X-Role': currentUser.role }
     }).then(res => {
-        if (!res.ok) throw new Error();
-        showMessage('Airline gelöscht');
-        loadAirlines();
-    }).catch(() => showMessage('Fehler beim Löschen', true));
+        if (res.ok) {
+            showMessage('Airline gelöscht');
+            invalidateAirlineCache();
+            loadAirlines();
+        } else {
+            showMessage('Fehler beim Löschen', true);
+        }
+    }).catch(() => {
+        queueOperation({
+            method: 'DELETE',
+            url: `/api/airlines/${icao}`,
+            headers: { 'X-Role': currentUser.role }
+        });
+    });
 }
 
 function startEdit(icao, callsign) {
@@ -142,8 +174,19 @@ addForm.addEventListener('submit', e => {
             document.getElementById('new-icao').value = '';
             document.getElementById('new-callsign').value = '';
             showMessage('Airline hinzugefügt');
+            invalidateAirlineCache();
             loadAirlines();
-        }).catch(() => showMessage('Fehler beim Hinzufügen', true));
+        }).catch(() => {
+            queueOperation({
+                method: 'POST',
+                url: '/api/airlines',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': currentUser.role
+                },
+                body: { icao, callsign }
+            });
+        });
     }
 });
 
@@ -165,8 +208,19 @@ editForm.addEventListener('submit', e => {
         editForm.classList.add('hidden');
         editCallsignInput.value = '';
         editTarget = null;
+        invalidateAirlineCache();
         loadAirlines();
-    }).catch(() => showMessage('Fehler beim Aktualisieren', true));
+    }).catch(() => {
+        queueOperation({
+            method: 'PUT',
+            url: `/api/airlines/${editTarget}`,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Role': currentUser.role
+            },
+            body: { callsign: editCallsignInput.value }
+        });
+    });
 });
 
 cancelEditBtn.addEventListener('click', () => {
@@ -217,4 +271,11 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(() => console.log('Service Worker registriert'))
         .catch(err => console.log('Fehler beim Registrieren:', err));
+
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data?.type === 'sync-complete') {
+            showMessage('Änderungen synchronisiert');
+            loadAirlines();
+        }
+    });
 }
