@@ -4,6 +4,10 @@ body {
     margin: 50px;
 }
 
+.hidden {
+    display: none;
+}
+
 input {
     width: 80%;
     padding: 10px;
@@ -34,4 +38,23 @@ li span:first-child {
 
 li:hover {
     background-color: #f0f0f0;
+}
+
+#auth-section, #crud-section {
+    margin-top: 20px;
+}
+
+#login-form input,
+#crud-section input {
+    width: auto;
+    margin: 5px;
+    padding: 5px;
+}
+
+#airline-list li {
+    align-items: center;
+}
+
+#airline-list li button {
+    margin-left: 10px;
 }
