@@ -15,3 +15,21 @@ Create a `.env` file or export variables in your shell.
 HTTP requests are logged using [`morgan`](https://www.npmjs.com/package/morgan).
 In production (`NODE_ENV=production`) logs are written to stdout using the `combined` format;
 in other environments the `dev` format is used.
+
+## Docker
+
+Build the image and run the container:
+
+```bash
+docker build -t airline-callsign-finder .
+docker run -p 3000:3000 -e PORT=3000 airline-callsign-finder
+```
+
+## Running without Docker
+
+When not containerized, use a process manager to keep the server running:
+
+```bash
+npm i -g pm2
+pm2 start server.js
+```
