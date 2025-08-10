@@ -1,10 +1,12 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { router: authRouter, authenticateToken, requireRole } = require('./auth');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(__dirname));
+app.use('/api', authRouter);
 
 const DATA_FILE = path.join(__dirname, 'airlines.json');
 
@@ -16,12 +18,7 @@ function writeData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-function requireAuthor(req, res, next) {
-  if (req.header('x-role') !== 'author') {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  next();
-}
+const requireAuthor = requireRole('author');
 
 app.get('/api/airlines', (req, res) => {
   res.json(readData());
@@ -35,7 +32,7 @@ app.get('/api/airlines/:icao', (req, res) => {
   res.json({ icao, callsign });
 });
 
-app.post('/api/airlines', requireAuthor, (req, res) => {
+app.post('/api/airlines', authenticateToken, requireAuthor, (req, res) => {
   const { icao, callsign } = req.body;
   if (!icao || !callsign) {
     return res.status(400).json({ error: 'icao and callsign required' });
@@ -46,7 +43,7 @@ app.post('/api/airlines', requireAuthor, (req, res) => {
   res.status(201).json({ icao: icao.toUpperCase(), callsign });
 });
 
-app.put('/api/airlines/:icao', requireAuthor, (req, res) => {
+app.put('/api/airlines/:icao', authenticateToken, requireAuthor, (req, res) => {
   const { callsign } = req.body;
   const icao = req.params.icao.toUpperCase();
   const data = readData();
@@ -56,7 +53,7 @@ app.put('/api/airlines/:icao', requireAuthor, (req, res) => {
   res.json({ icao, callsign });
 });
 
-app.delete('/api/airlines/:icao', requireAuthor, (req, res) => {
+app.delete('/api/airlines/:icao', authenticateToken, requireAuthor, (req, res) => {
   const icao = req.params.icao.toUpperCase();
   const data = readData();
   if (!data[icao]) return res.status(404).end();
