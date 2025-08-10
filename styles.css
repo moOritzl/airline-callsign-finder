@@ -58,3 +58,15 @@ li:hover {
 #airline-list li button {
     margin-left: 10px;
 }
+
+#message {
+    margin-top: 10px;
+}
+
+#message.error {
+    color: red;
+}
+
+#message.success {
+    color: green;
+}
