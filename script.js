@@ -1,18 +1,16 @@
 let airlines = {};
 let currentUser = JSON.parse(localStorage.getItem('user')) || null;
 
-const storedAirlines = localStorage.getItem('airlines');
-if (storedAirlines) {
-    airlines = JSON.parse(storedAirlines);
-} else {
-    fetch('airlines.json')
+function loadAirlines() {
+    return fetch('/api/airlines')
         .then(response => response.json())
         .then(data => {
             airlines = data;
-            localStorage.setItem('airlines', JSON.stringify(airlines));
             if (currentUser?.role === 'author') renderAirlineList();
         });
 }
+
+loadAirlines();
 
 const users = {
     author: { password: 'secret', role: 'author' }
@@ -53,6 +51,7 @@ document.getElementById('login-btn').addEventListener('click', () => {
         currentUser = { username, role: user.role };
         localStorage.setItem('user', JSON.stringify(currentUser));
         updateUI();
+        if (currentUser.role === 'author') loadAirlines();
     } else {
         alert('Login fehlgeschlagen');
     }
@@ -73,9 +72,10 @@ function renderAirlineList() {
         del.textContent = 'Löschen';
         del.addEventListener('click', () => {
             if (!(currentUser?.role === 'author')) return;
-            delete airlines[icao];
-            localStorage.setItem('airlines', JSON.stringify(airlines));
-            renderAirlineList();
+            fetch(`/api/airlines/${icao}`, {
+                method: 'DELETE',
+                headers: { 'X-Role': currentUser.role }
+            }).then(loadAirlines);
         });
         li.appendChild(del);
         airlineList.appendChild(li);
@@ -87,11 +87,18 @@ document.getElementById('add-airline').addEventListener('click', () => {
     const icao = document.getElementById('new-icao').value.toUpperCase();
     const callsign = document.getElementById('new-callsign').value;
     if (icao && callsign) {
-        airlines[icao] = callsign;
-        localStorage.setItem('airlines', JSON.stringify(airlines));
-        document.getElementById('new-icao').value = '';
-        document.getElementById('new-callsign').value = '';
-        renderAirlineList();
+        fetch('/api/airlines', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Role': currentUser.role
+            },
+            body: JSON.stringify({ icao, callsign })
+        }).then(() => {
+            document.getElementById('new-icao').value = '';
+            document.getElementById('new-callsign').value = '';
+            loadAirlines();
+        });
     }
 });
 
