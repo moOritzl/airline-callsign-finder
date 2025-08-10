@@ -22,6 +22,22 @@ const currentUserSpan = document.getElementById('current-user');
 
 const crudSection = document.getElementById('crud-section');
 const airlineList = document.getElementById('airline-list');
+const addForm = document.getElementById('add-form');
+const editForm = document.getElementById('edit-form');
+const editIcaoInput = document.getElementById('edit-icao');
+const editCallsignInput = document.getElementById('edit-callsign');
+const cancelEditBtn = document.getElementById('cancel-edit');
+const messageBox = document.getElementById('message');
+let editTarget = null;
+
+function showMessage(text, isError = false) {
+    messageBox.textContent = text;
+    messageBox.className = isError ? 'error' : 'success';
+    setTimeout(() => {
+        messageBox.textContent = '';
+        messageBox.className = '';
+    }, 3000);
+}
 
 function updateUI() {
     if (currentUser) {
@@ -67,22 +83,47 @@ function renderAirlineList() {
     airlineList.innerHTML = '';
     Object.keys(airlines).forEach(icao => {
         const li = document.createElement('li');
-        li.textContent = `${icao} - ${airlines[icao]}`;
-        const del = document.createElement('button');
-        del.textContent = 'Löschen';
-        del.addEventListener('click', () => {
-            if (!(currentUser?.role === 'author')) return;
-            fetch(`/api/airlines/${icao}`, {
-                method: 'DELETE',
-                headers: { 'X-Role': currentUser.role }
-            }).then(loadAirlines);
-        });
-        li.appendChild(del);
+        const span = document.createElement('span');
+        span.textContent = `${icao} - ${airlines[icao]}`;
+        li.appendChild(span);
+
+        if (currentUser?.role === 'author') {
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Bearbeiten';
+            editBtn.addEventListener('click', () => startEdit(icao, airlines[icao]));
+            li.appendChild(editBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'Löschen';
+            delBtn.addEventListener('click', () => deleteAirline(icao));
+            li.appendChild(delBtn);
+        }
+
         airlineList.appendChild(li);
     });
 }
 
-document.getElementById('add-airline').addEventListener('click', () => {
+function deleteAirline(icao) {
+    if (!(currentUser?.role === 'author')) return;
+    fetch(`/api/airlines/${icao}`, {
+        method: 'DELETE',
+        headers: { 'X-Role': currentUser.role }
+    }).then(res => {
+        if (!res.ok) throw new Error();
+        showMessage('Airline gelöscht');
+        loadAirlines();
+    }).catch(() => showMessage('Fehler beim Löschen', true));
+}
+
+function startEdit(icao, callsign) {
+    editTarget = icao;
+    editIcaoInput.value = icao;
+    editCallsignInput.value = callsign;
+    editForm.classList.remove('hidden');
+}
+
+addForm.addEventListener('submit', e => {
+    e.preventDefault();
     if (!(currentUser?.role === 'author')) return;
     const icao = document.getElementById('new-icao').value.toUpperCase();
     const callsign = document.getElementById('new-callsign').value;
@@ -94,12 +135,43 @@ document.getElementById('add-airline').addEventListener('click', () => {
                 'X-Role': currentUser.role
             },
             body: JSON.stringify({ icao, callsign })
+        }).then(res => {
+            if (!res.ok) throw new Error();
+            return res.json();
         }).then(() => {
             document.getElementById('new-icao').value = '';
             document.getElementById('new-callsign').value = '';
+            showMessage('Airline hinzugefügt');
             loadAirlines();
-        });
+        }).catch(() => showMessage('Fehler beim Hinzufügen', true));
     }
+});
+
+editForm.addEventListener('submit', e => {
+    e.preventDefault();
+    if (!(currentUser?.role === 'author') || !editTarget) return;
+    fetch(`/api/airlines/${editTarget}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Role': currentUser.role
+        },
+        body: JSON.stringify({ callsign: editCallsignInput.value })
+    }).then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+    }).then(() => {
+        showMessage('Airline aktualisiert');
+        editForm.classList.add('hidden');
+        editCallsignInput.value = '';
+        editTarget = null;
+        loadAirlines();
+    }).catch(() => showMessage('Fehler beim Aktualisieren', true));
+});
+
+cancelEditBtn.addEventListener('click', () => {
+    editForm.classList.add('hidden');
+    editTarget = null;
 });
 
 const input = document.getElementById('icao-input');
@@ -117,7 +189,22 @@ input.addEventListener('input', function () {
 
     matches.forEach(a => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>${a.icao}</span> <span>${a.callsign}</span>`;
+        const icaoSpan = document.createElement('span');
+        icaoSpan.textContent = a.icao;
+        const callSpan = document.createElement('span');
+        callSpan.textContent = a.callsign;
+        li.append(icaoSpan, callSpan);
+
+        if (currentUser?.role === 'author') {
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'Löschen';
+            delBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                deleteAirline(a.icao);
+            });
+            li.appendChild(delBtn);
+        }
+
         li.addEventListener('click', () => {
             input.value = a.icao;
             suggestions.innerHTML = '';

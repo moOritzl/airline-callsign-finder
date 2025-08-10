@@ -27,10 +27,19 @@
 
 <div id="crud-section" class="hidden">
     <h2>Airlines verwalten</h2>
-    <input type="text" id="new-icao" placeholder="ICAO">
-    <input type="text" id="new-callsign" placeholder="Callsign">
-    <button id="add-airline">Hinzufügen</button>
+    <form id="add-form">
+        <input type="text" id="new-icao" placeholder="ICAO">
+        <input type="text" id="new-callsign" placeholder="Callsign">
+        <button type="submit">Hinzufügen</button>
+    </form>
+    <form id="edit-form" class="hidden">
+        <input type="text" id="edit-icao" placeholder="ICAO" disabled>
+        <input type="text" id="edit-callsign" placeholder="Callsign">
+        <button type="submit">Speichern</button>
+        <button type="button" id="cancel-edit">Abbrechen</button>
+    </form>
     <ul id="airline-list"></ul>
+    <div id="message"></div>
 </div>
 
 <script src="script.js"></script>
