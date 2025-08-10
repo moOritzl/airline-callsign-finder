@@ -9,16 +9,30 @@
 </head>
 <body>
 <h1>Airline Callsign Finder</h1>
+
+<div id="auth-section">
+    <div id="login-form">
+        <input type="text" id="username" placeholder="Benutzername">
+        <input type="password" id="password" placeholder="Passwort">
+        <button id="login-btn">Login</button>
+    </div>
+    <div id="logout-section" class="hidden">
+        Eingeloggt als <span id="current-user"></span>
+        <button id="logout-btn">Logout</button>
+    </div>
+</div>
+
 <input type="text" id="icao-input" placeholder="ICAO-Code eingeben (z. B. DLH)">
 <ul id="suggestions"></ul>
 
+<div id="crud-section" class="hidden">
+    <h2>Airlines verwalten</h2>
+    <input type="text" id="new-icao" placeholder="ICAO">
+    <input type="text" id="new-callsign" placeholder="Callsign">
+    <button id="add-airline">Hinzufügen</button>
+    <ul id="airline-list"></ul>
+</div>
+
 <script src="script.js"></script>
-<script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('Service Worker registriert'))
-            .catch(err => console.log('Fehler beim Registrieren:', err));
-    }
-</script>
 </body>
 </html>
